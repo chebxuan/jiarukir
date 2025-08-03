@@ -4,8 +4,7 @@ from PIL import Image
 import cv2
 import time
 from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister
-from qiskit_aer import Aer
-from qiskit import transpile
+from qiskit import Aer, execute
 from qiskit.visualization import plot_histogram, plot_bloch_multivector
 from qiskit.quantum_info import Operator
 import qiskit.quantum_info as qi
@@ -74,8 +73,7 @@ class QuantumSTransformCircuit:
         
         # 使用Aer模拟器
         backend = Aer.get_backend('qasm_simulator')
-        transpiled_qc = transpile(qc, backend)
-        job = backend.run(transpiled_qc, shots=1000)
+        job = execute(qc, backend, shots=1000)
         result = job.result()
         counts = result.get_counts()
         
@@ -162,8 +160,7 @@ class QuantumKirschCircuit:
                     
                     # 执行量子电路
                     backend = Aer.get_backend('qasm_simulator')
-                    transpiled_qc = transpile(qc, backend)
-                    job = backend.run(transpiled_qc, shots=100)
+                    job = execute(qc, backend, shots=100)
                     result = job.result()
                     counts = result.get_counts()
                     
