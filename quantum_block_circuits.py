@@ -1,10 +1,30 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister
-from qiskit import Aer, execute, transpile
+try:
+    from qiskit import Aer, execute, transpile
+except ImportError:
+    try:
+        from qiskit_aer import Aer
+        from qiskit import execute, transpile
+    except ImportError:
+        print("Warning: Qiskit Aer not available. Some quantum simulation features may not work.")
+        Aer = None
+
 from qiskit.visualization import plot_histogram, circuit_drawer
-from qiskit.circuit.library import QFT, QFTGate
-from qiskit.quantum_info import Statevector
+try:
+    from qiskit.circuit.library import QFT, QFTGate
+except ImportError:
+    print("Warning: QFT library not available.")
+    QFT = None
+    QFTGate = None
+
+try:
+    from qiskit.quantum_info import Statevector
+except ImportError:
+    print("Warning: Statevector not available.")
+    Statevector = None
+
 import math
 
 class QuantumBlockCircuits:
@@ -361,13 +381,78 @@ class QuantumBlockCircuits:
         """
         可视化量子块电路
         """
-        fig = plt.figure(figsize=(16, 10))
-        
-        # 绘制电路图
-        circuit_diagram = circuit_drawer(qc, output='mpl', style='iqx', 
-                                       fold=-1, scale=0.8)
-        
-        plt.title(title, fontsize=14, fontweight='bold')
-        plt.tight_layout()
-        
-        return fig
+        try:
+            fig = plt.figure(figsize=(16, 10))
+            
+            # 绘制电路图
+            circuit_diagram = circuit_drawer(qc, output='mpl', style='iqx', 
+                                           fold=-1, scale=0.8)
+            
+            plt.title(title, fontsize=14, fontweight='bold')
+            plt.tight_layout()
+            
+            return fig
+        except Exception as e:
+            print(f"可视化电路时出错: {e}")
+            print("电路信息:")
+            print(f"量子比特数: {qc.num_qubits}")
+            print(f"电路深度: {qc.depth()}")
+            print(f"门数量: {len(qc.data)}")
+            return None
+
+# 添加一个简单的测试函数
+def test_quantum_blocks():
+    """
+    测试量子块电路的基本功能
+    """
+    print("测试量子CDF(2,2)小波变换块电路...")
+    
+    # 创建实例
+    qbc = QuantumBlockCircuits(bit_precision=4)
+    
+    # 测试Split块
+    print("\n1. 测试Split块:")
+    test_signal = [1, 3, 2, 6]
+    try:
+        split_circuit = qbc.create_split_block(test_signal)
+        print(f"   Split电路创建成功!")
+        print(f"   量子比特数: {split_circuit.num_qubits}")
+        print(f"   电路深度: {split_circuit.depth()}")
+    except Exception as e:
+        print(f"   Split电路创建失败: {e}")
+    
+    # 测试Predict块
+    print("\n2. 测试Predict块:")
+    try:
+        predict_circuit = qbc.create_predict_block(1, 2)
+        print(f"   Predict电路创建成功!")
+        print(f"   量子比特数: {predict_circuit.num_qubits}")
+        print(f"   电路深度: {predict_circuit.depth()}")
+    except Exception as e:
+        print(f"   Predict电路创建失败: {e}")
+    
+    # 测试Update块
+    print("\n3. 测试Update块:")
+    try:
+        update_circuit = qbc.create_update_block(1, 2, 3)
+        print(f"   Update电路创建成功!")
+        print(f"   量子比特数: {update_circuit.num_qubits}")
+        print(f"   电路深度: {update_circuit.depth()}")
+    except Exception as e:
+        print(f"   Update电路创建失败: {e}")
+    
+    # 测试完整块电路
+    print("\n4. 测试完整CDF块电路:")
+    try:
+        complete_circuit = qbc.create_complete_cdf_block_circuit(test_signal)
+        print(f"   完整电路创建成功!")
+        print(f"   量子比特数: {complete_circuit.num_qubits}")
+        print(f"   电路深度: {complete_circuit.depth()}")
+        print(f"   门数量: {len(complete_circuit.data)}")
+    except Exception as e:
+        print(f"   完整电路创建失败: {e}")
+    
+    print("\n测试完成!")
+
+if __name__ == "__main__":
+    test_quantum_blocks()

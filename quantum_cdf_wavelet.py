@@ -1,12 +1,41 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister
-from qiskit import Aer, execute, transpile
+try:
+    from qiskit import Aer, execute, transpile
+except ImportError:
+    try:
+        from qiskit_aer import Aer
+        from qiskit import execute, transpile
+    except ImportError:
+        print("Warning: Qiskit Aer not available. Some quantum simulation features may not work.")
+        Aer = None
+
 from qiskit.visualization import plot_histogram, circuit_drawer
-from qiskit.circuit.library import QFT
-from qiskit.quantum_info import Statevector
-import cv2
-from PIL import Image
+try:
+    from qiskit.circuit.library import QFT
+except ImportError:
+    print("Warning: QFT library not available.")
+    QFT = None
+
+try:
+    from qiskit.quantum_info import Statevector
+except ImportError:
+    print("Warning: Statevector not available.")
+    Statevector = None
+
+try:
+    import cv2
+except ImportError:
+    print("Warning: OpenCV not available. Using numpy for image processing.")
+    cv2 = None
+
+try:
+    from PIL import Image
+except ImportError:
+    print("Warning: PIL not available.")
+    Image = None
+
 import math
 
 class QuantumCDFWaveletTransform:
@@ -226,7 +255,10 @@ class QuantumCDFWaveletTransform:
         """
         # 读取图像
         if isinstance(image_path, str):
-            image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+            if cv2 is not None:
+                image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+            else:
+                image = None
         else:
             image = image_path
             
@@ -254,51 +286,106 @@ class QuantumCDFWaveletTransform:
         """
         可视化变换结果
         """
-        fig, axes = plt.subplots(3, 1, figsize=(12, 8))
-        
-        # 原始信号
-        axes[0].plot(original_signal, 'b-o', label='Original Signal')
-        axes[0].set_title('Original Signal')
-        axes[0].set_xlabel('Sample Index')
-        axes[0].set_ylabel('Amplitude')
-        axes[0].grid(True)
-        axes[0].legend()
-        
-        # 近似系数
-        axes[1].plot(approx, 'r-s', label='Approximation Coefficients')
-        axes[1].set_title('Approximation Coefficients (Low-pass)')
-        axes[1].set_xlabel('Sample Index')
-        axes[1].set_ylabel('Amplitude')
-        axes[1].grid(True)
-        axes[1].legend()
-        
-        # 详细系数
-        axes[2].plot(detail, 'g-^', label='Detail Coefficients')
-        axes[2].set_title('Detail Coefficients (High-pass)')
-        axes[2].set_xlabel('Sample Index')
-        axes[2].set_ylabel('Amplitude')
-        axes[2].grid(True)
-        axes[2].legend()
-        
-        plt.tight_layout()
-        return fig
+        try:
+            fig, axes = plt.subplots(3, 1, figsize=(12, 8))
+            
+            # 原始信号
+            axes[0].plot(original_signal, 'b-o', label='Original Signal')
+            axes[0].set_title('Original Signal')
+            axes[0].set_xlabel('Sample Index')
+            axes[0].set_ylabel('Amplitude')
+            axes[0].grid(True)
+            axes[0].legend()
+            
+            # 近似系数
+            axes[1].plot(approx, 'r-s', label='Approximation Coefficients')
+            axes[1].set_title('Approximation Coefficients (Low-pass)')
+            axes[1].set_xlabel('Sample Index')
+            axes[1].set_ylabel('Amplitude')
+            axes[1].grid(True)
+            axes[1].legend()
+            
+            # 详细系数
+            axes[2].plot(detail, 'g-^', label='Detail Coefficients')
+            axes[2].set_title('Detail Coefficients (High-pass)')
+            axes[2].set_xlabel('Sample Index')
+            axes[2].set_ylabel('Amplitude')
+            axes[2].grid(True)
+            axes[2].legend()
+            
+            plt.tight_layout()
+            return fig
+        except Exception as e:
+            print(f"可视化出错: {e}")
+            return None
     
     def run_quantum_simulation(self, signal_data):
         """
         运行量子电路模拟
         """
-        # 创建完整电路
-        qc = self.create_complete_cdf_circuit(signal_data)
+        if Aer is None:
+            print("Aer模拟器不可用，跳过量子模拟")
+            return None, None
+            
+        try:
+            # 创建完整电路
+            qc = self.create_complete_cdf_circuit(signal_data)
+            
+            # 使用Aer模拟器
+            simulator = Aer.get_backend('qasm_simulator')
+            
+            # 添加测量
+            qc.measure_all()
+            
+            # 编译和执行
+            compiled_circuit = transpile(qc, simulator)
+            job = execute(compiled_circuit, simulator, shots=1024)
+            result = job.result()
+            
+            return result, qc
+        except Exception as e:
+            print(f"量子模拟出错: {e}")
+            return None, None
+
+# 添加测试函数
+def test_quantum_cdf():
+    """
+    测试量子CDF小波变换
+    """
+    print("测试量子CDF(2,2)小波变换...")
+    
+    # 创建实例
+    qcdf = QuantumCDFWaveletTransform(bit_precision=4)
+    
+    # 测试经典变换
+    print("\n1. 测试经典CDF变换:")
+    test_signal = [1, 3, 2, 6]
+    try:
+        approx, detail = qcdf.classical_cdf_transform(test_signal)
+        print(f"   输入信号: {test_signal}")
+        print(f"   近似系数: {approx}")
+        print(f"   详细系数: {detail}")
+        print("   经典变换成功!")
+    except Exception as e:
+        print(f"   经典变换失败: {e}")
+    
+    # 测试量子电路创建
+    print("\n2. 测试量子电路创建:")
+    try:
+        split_circuit = qcdf.create_split_circuit(len(test_signal))
+        print(f"   Split电路: {split_circuit.num_qubits} 量子比特, 深度 {split_circuit.depth()}")
         
-        # 使用Aer模拟器
-        simulator = Aer.get_backend('qasm_simulator')
+        predict_circuit = qcdf.create_predict_circuit()
+        print(f"   Predict电路: {predict_circuit.num_qubits} 量子比特, 深度 {predict_circuit.depth()}")
         
-        # 添加测量
-        qc.measure_all()
+        update_circuit = qcdf.create_update_circuit()
+        print(f"   Update电路: {update_circuit.num_qubits} 量子比特, 深度 {update_circuit.depth()}")
         
-        # 编译和执行
-        compiled_circuit = transpile(qc, simulator)
-        job = execute(compiled_circuit, simulator, shots=1024)
-        result = job.result()
-        
-        return result, qc
+        print("   量子电路创建成功!")
+    except Exception as e:
+        print(f"   量子电路创建失败: {e}")
+    
+    print("\n测试完成!")
+
+if __name__ == "__main__":
+    test_quantum_cdf()
