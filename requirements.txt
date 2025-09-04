@@ -1,0 +1,5 @@
+# 量子图像平滑处理依赖包
+qiskit>=0.45.0
+qiskit-aer>=0.12.0
+numpy>=1.21.0
+matplotlib>=3.5.0
